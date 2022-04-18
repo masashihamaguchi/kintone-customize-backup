@@ -210,7 +210,7 @@ def generate_readme_and_ignore_file(app_list):
     print(f"customize apps: {number}")
 
 
-def git_commit_and_push():
+def git_commit_and_push(mode):
     message = 'backup: %s' % (get_date())
 
     # git commit
@@ -218,8 +218,9 @@ def git_commit_and_push():
     repo.git.add('.')
     commit = repo.git.commit('.', message=message)
     print(commit)
-    push = repo.git.push('origin', 'master')
-    print(push)
+    if mode != 'local':
+        push = repo.git.push('origin', 'master')
+        print(push)
 
     print('commit and push ok!')
 
@@ -243,9 +244,8 @@ def main():
     generate_readme_and_ignore_file(app_list)
 
     # commit and push
-    mode = sys.argv[0]
-    if mode != 'local':
-        git_commit_and_push()
+    mode = sys.argv[1]
+    git_commit_and_push(mode)
 
 
 if __name__ == '__main__':
