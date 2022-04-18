@@ -22,7 +22,8 @@ APPS_DIR = CONFIG['directory'] + '/apps'
 
 
 # for kintone
-def getAppList(app_list=[]):
+def get_app_list(a_list=None):
+    app_list = [] if a_list is None else a_list
     url = f"https://{CONFIG['domain']}/k/v1/apps.json?offset={len(app_list)}&limit=100"
     res = requests.get(
         url,
@@ -38,12 +39,12 @@ def getAppList(app_list=[]):
     app_list.extend(apps)
 
     if len(apps) >= 100:
-        return getAppList(app_list)
+        return get_app_list(app_list)
     else:
         return app_list
 
 
-def getCustomizeFileList(app_id):
+def get_customize_file_list(app_id):
     url = f"https://{CONFIG['domain']}/k/v1/app/customize.json?app={app_id}"
     return requests.get(
         url,
@@ -53,8 +54,8 @@ def getCustomizeFileList(app_id):
     ).json()
 
 
-def getCustomizeFile(fileKey):
-    url = f"https://{CONFIG['domain']}/k/v1/file.json?fileKey={fileKey}"
+def get_customize_file(file_key):
+    url = f"https://{CONFIG['domain']}/k/v1/file.json?fileKey={file_key}"
     return requests.get(
         url,
         headers={
@@ -64,7 +65,7 @@ def getCustomizeFile(fileKey):
 
 
 # methods
-def formatManifestData(path, array):
+def format_manifest_data(path, array):
     data = []
     for a in array:
         if a['type'] == 'URL':
@@ -78,10 +79,10 @@ def formatManifestData(path, array):
     return data
 
 
-def getDate():
+def get_date():
     t_delta = datetime.timedelta(hours=9)
-    JST = datetime.timezone(t_delta, 'JST')
-    now = datetime.datetime.now(JST)
+    jst = datetime.timezone(t_delta, 'JST')
+    now = datetime.datetime.now(jst)
     return '%s %s' % (now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'))
 
 
@@ -98,14 +99,14 @@ def init():
     print('initialization ok!')
 
 
-def backupFiles(app_list):
+def backup_files(app_list):
     for index, app in enumerate(app_list):
 
         print(f"\rcheck customize files {index + 1}/{len(app_list)}...", end='')
-        id = app['appId']
+        app_id = app['appId']
 
         # get customize file list
-        customize = getCustomizeFileList(id)
+        customize = get_customize_file_list(app_id)
 
         if 'code' in customize:
             app['number_of_files'] = 0
@@ -123,63 +124,63 @@ def backupFiles(app_list):
             continue
 
         # make dir
-        os.makedirs(f"{APPS_DIR}/{id}", exist_ok=True)
+        os.makedirs(f"{APPS_DIR}/{app_id}", exist_ok=True)
 
-        os.makedirs(f"{APPS_DIR}/{id}/desktop/js", exist_ok=True)
-        os.makedirs(f"{APPS_DIR}/{id}/desktop/css", exist_ok=True)
-        os.makedirs(f"{APPS_DIR}/{id}/mobile/js", exist_ok=True)
-        os.makedirs(f"{APPS_DIR}/{id}/mobile/css", exist_ok=True)
+        os.makedirs(f"{APPS_DIR}/{app_id}/desktop/js", exist_ok=True)
+        os.makedirs(f"{APPS_DIR}/{app_id}/desktop/css", exist_ok=True)
+        os.makedirs(f"{APPS_DIR}/{app_id}/mobile/js", exist_ok=True)
+        os.makedirs(f"{APPS_DIR}/{app_id}/mobile/css", exist_ok=True)
 
         # save files
         for f in customize['desktop']['js']:
             if f['type'] == 'FILE':
-                data = getCustomizeFile(f['file']['fileKey'])
-                with open(f"{APPS_DIR}/{id}/desktop/js/{f['file']['name']}", "wb") as file:
+                data = get_customize_file(f['file']['fileKey'])
+                with open(f"{APPS_DIR}/{app_id}/desktop/js/{f['file']['name']}", "wb") as file:
                     file.write(data)
 
         for f in customize['desktop']['css']:
             if f['type'] == 'FILE':
-                data = getCustomizeFile(f['file']['fileKey'])
-                with open(f"{APPS_DIR}/{id}/desktop/css/{f['file']['name']}", "wb") as file:
+                data = get_customize_file(f['file']['fileKey'])
+                with open(f"{APPS_DIR}/{app_id}/desktop/css/{f['file']['name']}", "wb") as file:
                     file.write(data)
 
         for f in customize['mobile']['js']:
             if f['type'] == 'FILE':
-                data = getCustomizeFile(f['file']['fileKey'])
-                with open(f"{APPS_DIR}/{id}/mobile/js/{f['file']['name']}", "wb") as file:
+                data = get_customize_file(f['file']['fileKey'])
+                with open(f"{APPS_DIR}/{app_id}/mobile/js/{f['file']['name']}", "wb") as file:
                     file.write(data)
 
         for f in customize['mobile']['css']:
             if f['type'] == 'FILE':
-                data = getCustomizeFile(f['file']['fileKey'])
-                with open(f"{APPS_DIR}/{id}/mobile/css/{f['file']['name']}", "wb") as file:
+                data = get_customize_file(f['file']['fileKey'])
+                with open(f"{APPS_DIR}/{app_id}/mobile/css/{f['file']['name']}", "wb") as file:
                     file.write(data)
 
         # create manifest
         manifest = {
-            'appId': id,
+            'appId': app_id,
             'scope': customize['scope'],
             'files': {
                 'desktop': {
-                    'js': formatManifestData('desktop/js', customize['desktop']['js']),
-                    'css': formatManifestData('desktop/css', customize['desktop']['css'])
+                    'js': format_manifest_data('desktop/js', customize['desktop']['js']),
+                    'css': format_manifest_data('desktop/css', customize['desktop']['css'])
                 },
                 'mobile': {
-                    'js': formatManifestData('desktop/js', customize['mobile']['js']),
-                    'css': formatManifestData('desktop/js', customize['mobile']['css'])
+                    'js': format_manifest_data('desktop/js', customize['mobile']['js']),
+                    'css': format_manifest_data('desktop/js', customize['mobile']['css'])
                 }
             },
             'revision': customize['revision']
         }
 
-        with open(f"{APPS_DIR}/{id}/manifest.json", 'w') as file:
+        with open(f"{APPS_DIR}/{app_id}/manifest.json", 'w') as file:
             json.dump(manifest, file, ensure_ascii=False, indent=4)
 
     print("\033[2K\033[G" + "save completed!")
 
 
-def generateReadmeAndIgnoreFile(app_list):
-    date = getDate()
+def generate_readme_and_ignore_file(app_list):
+    date = get_date()
     number = 0
     rows = ''
 
@@ -209,8 +210,8 @@ def generateReadmeAndIgnoreFile(app_list):
     print(f"customize apps: {number}")
 
 
-def gitCommitAndPush():
-    message = 'backup: %s' % (getDate())
+def git_commit_and_push():
+    message = 'backup: %s' % (get_date())
 
     # git commit
     repo = git.Repo(CONFIG['directory'])
@@ -229,22 +230,22 @@ def main():
     init()
 
     # get apps list
-    app_list = getAppList()
+    app_list = get_app_list()
     if type(app_list) is not list:
         print(app_list)
         return
     print(f"number of apps: {len(app_list)}")
 
     # backup customize files
-    backupFiles(app_list)
+    backup_files(app_list)
 
     # generate README.md
-    generateReadmeAndIgnoreFile(app_list)
+    generate_readme_and_ignore_file(app_list)
 
     # commit and push
     mode = sys.argv[0]
     if mode != 'local':
-        gitCommitAndPush()
+        git_commit_and_push()
 
 
 if __name__ == '__main__':
