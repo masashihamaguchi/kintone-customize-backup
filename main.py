@@ -8,7 +8,6 @@ import sys
 import os
 import shutil
 
-
 # config
 load_dotenv(override=True)
 CONFIG = {
@@ -27,7 +26,7 @@ def getAppList(app_list=[]):
     url = f"https://{CONFIG['domain']}/k/v1/apps.json?offset={len(app_list)}&limit=100"
     res = requests.get(
         url,
-        headers = {
+        headers={
             'X-Cybozu-authorization': AUTHORIZATION
         }
     )
@@ -43,20 +42,22 @@ def getAppList(app_list=[]):
     else:
         return app_list
 
+
 def getCustomizeFileList(app_id):
     url = f"https://{CONFIG['domain']}/k/v1/app/customize.json?app={app_id}"
     return requests.get(
         url,
-        headers = {
+        headers={
             'X-Cybozu-authorization': AUTHORIZATION
         }
     ).json()
+
 
 def getCustomizeFile(fileKey):
     url = f"https://{CONFIG['domain']}/k/v1/file.json?fileKey={fileKey}"
     return requests.get(
         url,
-        headers = {
+        headers={
             'X-Cybozu-authorization': AUTHORIZATION
         }
     ).content
@@ -73,14 +74,16 @@ def formatManifestData(path, array):
                 'type': a['type'],
                 'path': path + '/' + a['file']['name']
             })
-    
+
     return data
+
 
 def getDate():
     t_delta = datetime.timedelta(hours=9)
     JST = datetime.timezone(t_delta, 'JST')
     now = datetime.datetime.now(JST)
     return '%s %s' % (now.strftime('%Y-%m-%d'), now.strftime('%H:%M:%S'))
+
 
 def init():
     # check dir
@@ -94,14 +97,19 @@ def init():
 
     print('initialization ok!')
 
+
 def backupFiles(app_list):
     for index, app in enumerate(app_list):
 
         print(f"\rcheck customize files {index + 1}/{len(app_list)}...", end='')
         id = app['appId']
-        
+
         # get customize file list
         customize = getCustomizeFileList(id)
+
+        if 'code' in customize:
+            app['number_of_files'] = 0
+            continue
 
         # check files
         number_of_files = 0
@@ -111,7 +119,8 @@ def backupFiles(app_list):
         number_of_files += len(customize['mobile']['css'])
         app['number_of_files'] = number_of_files
 
-        if number_of_files == 0: continue
+        if number_of_files == 0:
+            continue
 
         # make dir
         os.makedirs(f"{APPS_DIR}/{id}", exist_ok=True)
@@ -127,7 +136,7 @@ def backupFiles(app_list):
                 data = getCustomizeFile(f['file']['fileKey'])
                 with open(f"{APPS_DIR}/{id}/desktop/js/{f['file']['name']}", "wb") as file:
                     file.write(data)
-        
+
         for f in customize['desktop']['css']:
             if f['type'] == 'FILE':
                 data = getCustomizeFile(f['file']['fileKey'])
@@ -145,7 +154,7 @@ def backupFiles(app_list):
                 data = getCustomizeFile(f['file']['fileKey'])
                 with open(f"{APPS_DIR}/{id}/mobile/css/{f['file']['name']}", "wb") as file:
                     file.write(data)
-        
+
         # create manifest
         manifest = {
             'appId': id,
@@ -156,8 +165,8 @@ def backupFiles(app_list):
                     'css': formatManifestData('desktop/css', customize['desktop']['css'])
                 },
                 'mobile': {
-                    'js':  formatManifestData('desktop/js', customize['mobile']['js']),
-                    'css':  formatManifestData('desktop/js', customize['mobile']['css'])
+                    'js': formatManifestData('desktop/js', customize['mobile']['js']),
+                    'css': formatManifestData('desktop/js', customize['mobile']['css'])
                 }
             },
             'revision': customize['revision']
@@ -168,6 +177,7 @@ def backupFiles(app_list):
 
     print("\033[2K\033[G" + "save completed!")
 
+
 def generateReadmeAndIgnoreFile(app_list):
     date = getDate()
     number = 0
@@ -177,10 +187,10 @@ def generateReadmeAndIgnoreFile(app_list):
         if app['number_of_files'] > 0:
             number += 1
 
-            row = '| %s | %s | [manifest.json](%s) |\n' % (app['appId'], app['name'], 'apps/' + app['appId'] + '/manifest.json')
+            row = f"| {app['appId']} | {app['name']} | [manifest.json](apps/{app['appId']}/manifest.json) |\n"
             rows += row
 
-    readme = open('template/README.md')
+    readme = open('template/README.md', 'r', encoding="utf-8")
     text = readme.read()
     readme.close()
 
@@ -197,6 +207,7 @@ def generateReadmeAndIgnoreFile(app_list):
     shutil.copy('template/.gitignore', f"{CONFIG['directory']}/.gitignore")
 
     print(f"customize apps: {number}")
+
 
 def gitCommitAndPush():
     message = 'backup: %s' % (getDate())
