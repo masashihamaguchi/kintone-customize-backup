@@ -244,7 +244,11 @@ def main():
     generate_readme_and_ignore_file(app_list)
 
     # commit and push
-    mode = sys.argv[1]
+    try:
+        mode = sys.argv[1]
+    except IndexError as e:
+        mode = ""
+
     git_commit_and_push(mode)
 
 
